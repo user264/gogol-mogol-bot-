@@ -30,8 +30,13 @@ async def delete_cook(session: AsyncSession, cook_id: int) -> tuple:
         return None, []
     name = cook.name
     deleted_tg_ids = []
-    # Delete linked users
-    for u in (await session.execute(select(User).where(User.cook_id == cook_id))).scalars().all():
+    # Delete linked users (by cook_id AND by cook's telegram_id to catch orphans)
+    linked_users_q = select(User).where(User.cook_id == cook_id)
+    if cook.telegram_id:
+        linked_users_q = select(User).where(
+            (User.cook_id == cook_id) | (User.telegram_id == cook.telegram_id)
+        )
+    for u in (await session.execute(linked_users_q)).scalars().all():
         deleted_tg_ids.append(u.telegram_id)
         await session.delete(u)
     # Delete shift edits → shifts
@@ -196,7 +201,13 @@ async def create_user(session: AsyncSession, telegram_id: int, role: str, cook_i
 
 
 async def get_all_users(session: AsyncSession) -> list[User]:
-    result = await session.execute(select(User).where(User.role != "pending").order_by(User.id))
+    result = await session.execute(
+        select(User).where(
+            User.role != "pending",
+            # Exclude phantom cooks: role=cook but no linked cook record
+            ~((User.role == "cook") & (User.cook_id.is_(None))),
+        ).order_by(User.id)
+    )
     return list(result.scalars().all())
 
 
