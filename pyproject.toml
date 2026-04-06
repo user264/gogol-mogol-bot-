@@ -1,0 +1,24 @@
+[project]
+name = "gogol-mogol-bot"
+version = "0.1.0"
+description = "Telegram bot for cook timesheet & bonus calculation"
+requires-python = ">=3.9"
+dependencies = [
+    "aiogram>=3.10,<4",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "apscheduler>=3.10,<4",
+    "python-dotenv>=1.0",
+    "fpdf2>=2.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "aiosqlite>=0.20"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
