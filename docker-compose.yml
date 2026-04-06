@@ -4,22 +4,26 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: gogol
-      POSTGRES_PASSWORD: gogol
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gogol}
       POSTGRES_DB: gogol_mogol
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gogol"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   bot:
     build: .
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://gogol:gogol@db:5432/gogol_mogol
+      DATABASE_URL: postgresql+asyncpg://gogol:${DB_PASSWORD:-gogol}@db:5432/gogol_mogol
 
 volumes:
   pgdata:
