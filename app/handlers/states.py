@@ -32,6 +32,11 @@ class SetRevenueFSM(StatesGroup):
     enter_amount = State()
 
 
+class SetRevenuePastFSM(StatesGroup):
+    choose_date = State()
+    enter_amount = State()
+
+
 class SetConfigFSM(StatesGroup):
     choose_param = State()
     enter_value = State()

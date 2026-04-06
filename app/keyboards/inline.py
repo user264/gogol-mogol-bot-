@@ -47,6 +47,9 @@ def menu_kb(role: str) -> InlineKeyboardMarkup:
         ])
         buttons.append([
             InlineKeyboardButton(text="\U0001f4b0 Выручка", callback_data="menu:revenue"),
+            InlineKeyboardButton(text="\U0001f4b0 За прош. дни", callback_data="menu:revenue_past"),
+        ])
+        buttons.append([
             InlineKeyboardButton(text="\U0001f4ca Отчёт", callback_data="menu:report"),
         ])
         buttons.append([
@@ -65,6 +68,9 @@ def menu_kb(role: str) -> InlineKeyboardMarkup:
         ])
         buttons.append([
             InlineKeyboardButton(text="\U0001f4b0 Выручка", callback_data="menu:revenue"),
+            InlineKeyboardButton(text="\U0001f4b0 За прош. дни", callback_data="menu:revenue_past"),
+        ])
+        buttons.append([
             InlineKeyboardButton(text="\U0001f4ca Отчёт", callback_data="menu:report"),
         ])
         buttons.append([
@@ -103,6 +109,41 @@ def date_pick_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=f"Вчера ({yesterday:%d.%m})", callback_data=f"date:{yesterday.isoformat()}"),
         ]
     ])
+
+
+def period_dates_kb(prefix: str = "revdate") -> InlineKeyboardMarkup:
+    """Keyboard with all dates of the current salary period (16th-15th)."""
+    from datetime import date, timedelta
+    today = date.today()
+    if today.day >= 16:
+        start = today.replace(day=16)
+        if today.month == 12:
+            end = date(today.year + 1, 1, 15)
+        else:
+            end = date(today.year, today.month + 1, 15)
+    else:
+        if today.month == 1:
+            start = date(today.year - 1, 12, 16)
+        else:
+            start = date(today.year, today.month - 1, 16)
+        end = today.replace(day=15)
+
+    dates = []
+    d = start
+    while d <= min(end, today):
+        dates.append(d)
+        d += timedelta(days=1)
+
+    rows = []
+    row = []
+    for d in dates:
+        row.append(InlineKeyboardButton(text=f"{d:%d.%m}", callback_data=f"{prefix}:{d.isoformat()}"))
+        if len(row) == 5:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def confirm_kb(action: str = "confirm") -> InlineKeyboardMarkup:

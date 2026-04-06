@@ -9,10 +9,10 @@ from aiogram.types import Message, CallbackQuery
 
 from app.database import async_session
 from app.models import User, Role
-from app.handlers.states import AddShiftFSM, EditShiftFSM, SetRevenueFSM
+from app.handlers.states import AddShiftFSM, EditShiftFSM, SetRevenueFSM, SetRevenuePastFSM
 from app.keyboards.inline import (
     cook_list_kb, date_pick_kb, confirm_kb, with_cancel,
-    cancel_inline_kb, hours_kb, back_menu_kb,
+    cancel_inline_kb, hours_kb, back_menu_kb, period_dates_kb,
 )
 from app.services import cook_service as cs
 from app.services.reports import daily_report, fmt_hours
@@ -394,6 +394,63 @@ async def enter_revenue(message: Message, state: FSMContext, db_user: User):
         chat_id=data["chat_id"],
         message_id=data["msg_id"],
         text=f"✅ Выручка: {amount:,.0f} тг записана ({date.today():%d.%m.%Y})",
+        reply_markup=back_menu_kb(),
+    )
+    await state.clear()
+
+
+# --- Revenue for past dates ---
+
+@router.callback_query(F.data == "menu:revenue_past")
+async def start_set_revenue_past(cb: CallbackQuery, state: FSMContext, db_user: User | None):
+    if not _is_sous_chef_or_owner(db_user):
+        return await cb.answer("Нет доступа.", show_alert=True)
+    await state.set_state(SetRevenuePastFSM.choose_date)
+    await cb.message.edit_text(
+        "📅 Выберите дату для внесения выручки:",
+        reply_markup=with_cancel(period_dates_kb("revdate")),
+    )
+    await state.update_data(msg_id=cb.message.message_id, chat_id=cb.message.chat.id)
+    await cb.answer()
+
+
+@router.callback_query(SetRevenuePastFSM.choose_date, F.data.startswith("revdate:"))
+async def revenue_past_pick_date(cb: CallbackQuery, state: FSMContext):
+    d = cb.data.split(":")[1]
+    dt = date.fromisoformat(d)
+    await state.update_data(revenue_date=d)
+    await state.set_state(SetRevenuePastFSM.enter_amount)
+    await cb.message.edit_text(
+        f"💰 Введите выручку за {dt:%d.%m.%Y} (тенге):",
+        reply_markup=cancel_inline_kb(),
+    )
+    await cb.answer()
+
+
+@router.message(SetRevenuePastFSM.enter_amount)
+async def enter_revenue_past(message: Message, state: FSMContext, db_user: User):
+    try:
+        amount = float(message.text.replace(",", ".").replace(" ", ""))
+        if amount < 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return await message.answer("Введите корректную сумму.")
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    data = await state.get_data()
+    revenue_date = date.fromisoformat(data["revenue_date"])
+
+    async with async_session() as session:
+        await cs.set_revenue(session, revenue_date, amount, db_user.id)
+
+    await common_mod.bot_instance.edit_message_text(
+        chat_id=data["chat_id"],
+        message_id=data["msg_id"],
+        text=f"✅ Выручка: {amount:,.0f} тг записана ({revenue_date:%d.%m.%Y})",
         reply_markup=back_menu_kb(),
     )
     await state.clear()
