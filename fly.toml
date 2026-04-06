@@ -1,0 +1,13 @@
+app = 'gogol-mogol-bot'
+primary_region = 'fra'
+
+[build]
+
+[env]
+  TZ = "Asia/Almaty"
+  DATABASE_URL = "sqlite+aiosqlite:///./gogol_mogol.db"
+
+[vm]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
